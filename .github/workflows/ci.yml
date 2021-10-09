@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      - name: JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+
+      - name: Package
+        id: buildAllApks
+        uses: eskatos/gradle-command-action@v1.3.3
+        with:
+          gradle-version: current
+          wrapper-cache-enabled: true
+          dependencies-cache-enabled: true
+          configuration-cache-enabled: true
+          arguments: assembleRelease
+
+      - name: Upload
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+        run: |
+          sudo apt-get install -y jq
+          GIT_TAG=`echo $GITHUB_REF | sed 's/refs\/tags\///'`
+          # get upload url
+          API_UPLOAD_URL=`curl \
+          -X POST \
+          -H "Accept: application/vnd.github.v3+json" \
+          -H "Authorization: token ${GITHUB_TOKEN}" \
+          https://api.github.com/repos/${GITHUB_REPOSITORY}/releases \
+          -d '{"tag_name":"'${GIT_TAG}'"}' \
+          | jq --raw-output '.upload_url' \
+          | sed 's/{?name,label}/?name/'`
+          # upload
+          curl \
+          -X POST \
+          -H "Accept: application/vnd.github.v3+json" \
+          -H "Authorization: token ${GITHUB_TOKEN}" \
+          -H "Content-Type: application/octet-stream" \
+          --data-binary @'app/build/outputs/apk/release/android.apk' \
+          ${API_UPLOAD_URL}=android.apk
