@@ -17,6 +17,14 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // 定义输出文件名称
+            // https://stackoverflow.com/a/55332662/4879713
+            android.applicationVariants.all {
+                variant ->
+                    variant.outputs.all {
+                        outputFileName = "android.apk"
+                    }
+            }
         }
     }
     compileOptions {
